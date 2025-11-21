@@ -1,0 +1,302 @@
+
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title> XXXXXX </title>
+  <meta name="description" content="Pemutar video dengan dua slot iklan mengambang di dalam area video (atas & bawah)." />
+  <style>
+    :root{
+      --bg:#071029;
+      --accent:#06b6d4;
+      --muted:#93a3b8;
+      --text:#e6eef6;
+      --radius:12px;
+
+      /* jarak untuk menghitung tinggi video */
+      --page-offset:140px;
+      --player-padding:0px;         /* diatur ke 0 agar video bisa melebar */
+      --player-max-width:1100px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; background:linear-gradient(180deg,var(--bg) 0%, #0b1220 100%); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    .wrap{ width:100%; max-width:var(--player-max-width); margin:20px auto; color:var(--text); padding:0 12px; }
+
+    h1.title{ text-align:center; color:var(--accent); margin:0 0 14px; font-weight:600; }
+
+    /* Player */
+    .player{
+      position:relative;
+      border-radius:var(--radius);
+      overflow:hidden;
+      background:#000;
+      box-shadow:0 12px 40px rgba(0,0,0,0.6);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:var(--player-padding); /* 0 now so video can reach edges */
+    }
+
+    /* Video: isi area pemutar. object-fit:cover menghilangkan bar hitam samping */
+    video#video {
+      display:block;
+      width:100%;
+      height: calc(100vh - var(--page-offset));
+      object-fit:cover; /* mengisi area, akan memotong sedikit bila perlu */
+      background:#000;
+      border-radius:0; /* biarkan melekat ke tepi player */
+    }
+
+    /* ===== Floating ad slots (di dalam .player) ===== */
+    .ad-slot {
+      position:absolute;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:6px;
+      border-radius:8px;
+      z-index:60;            /* di atas video */
+      pointer-events:auto;
+      background: transparent; /* menyatu dengan video */
+      backdrop-filter: none;
+      box-shadow: none;
+      max-width:calc(100% - 48px);
+    }
+
+    /* TOP: centered, transparan */
+    .ad-slot.top {
+      top:12px;
+      left:50%;
+      transform:translateX(-50%);
+      width:auto;
+    }
+
+    /* BOTTOM: stretch across player (mengisi sisi kiri-kanan) */
+    .ad-slot.bottom {
+      bottom:92px; /* sedikit di atas controls */
+      left:0;
+      right:0;
+      transform:none;
+      padding-left:12px;
+      padding-right:12px;
+      justify-content:center;
+    }
+
+    /* Kontainer iklan internal */
+    .ad-inner {
+      width:320px;
+      height:50px;
+      max-width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      color:var(--muted);
+      font-size:14px;
+      background:transparent;
+      border-radius:6px;
+    }
+
+    /* Bottom ad melebar */
+    .ad-slot.bottom .ad-inner {
+      width:100%;
+      max-width:1400px; /* boleh lebih besar agar mengisi sisi hitam */
+      height:110px;     /* sedikit lebih tinggi untuk terlihat penuh */
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* Controls di atas semua iklan (tetap klikable) */
+    .controls{
+      position:absolute;
+      left:12px; right:12px; bottom:12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:10px;
+      background:linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.45));
+      border-radius:10px;
+      backdrop-filter:blur(6px);
+      z-index:80;
+    }
+
+    .controls .btn{ background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--text); padding:8px 10px; border-radius:8px; cursor:pointer; }
+    .controls .progress{ width:100%; height:8px; -webkit-appearance:none; background:rgba(255,255,255,0.06); border-radius:8px; }
+    .controls .progress::-webkit-slider-thumb{ -webkit-appearance:none; width:14px;height:14px;border-radius:50%; background:var(--accent); }
+
+    footer{ text-align:center; margin-top:12px; }
+
+    /* FULL HD button in footer */
+    .fullhd-btn {
+      display:inline-block;
+      background:linear-gradient(90deg,var(--accent), #18b4c9);
+      color:#021018;
+      font-weight:700;
+      padding:10px 18px;
+      border-radius:999px;
+      border:0;
+      cursor:pointer;
+      box-shadow:0 6px 20px rgba(6,182,212,0.12);
+      transition:transform .12s ease, box-shadow .12s ease;
+      text-decoration:none;
+    }
+    .fullhd-btn:hover{ transform:translateY(-3px); box-shadow:0 10px 30px rgba(6,182,212,0.18); }
+
+    footer .hint { display:block; color:var(--muted); font-size:0.85rem; margin-top:8px; }
+
+    /* responsive */
+    @media (max-width:1400px){
+      .ad-slot.bottom .ad-inner{ max-width:1000px; height:90px; }
+    }
+    @media (max-width:920px){
+      .ad-inner{ width:300px; height:60px; }
+      .ad-slot.bottom .ad-inner { max-width:700px; height:70px; }
+    }
+    @media (max-width:760px){
+      :root{ --page-offset:120px; }
+      .ad-inner{ width:240px; height:50px; }
+      .ad-slot.bottom{ bottom:108px; padding-left:12px; padding-right:12px; }
+      .ad-slot.bottom .ad-inner { max-width:calc(100% - 24px); height:60px; }
+      .controls{ left:8px; right:8px; bottom:8px; padding:8px; }
+    }
+    @media (max-width:420px){
+      :root{ --page-offset:110px; }
+      .ad-inner{ width:180px; height:48px; }
+      .ad-slot.bottom{ bottom:120px; }
+      .ad-slot.bottom .ad-inner { max-width:calc(100% - 24px); height:48px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1 class="title"> XXXXXX </h1>
+
+    <section class="player" aria-label="Pemutar video">
+      <!-- VIDEO -->
+      <video id="video" preload="metadata" playsinline>
+        <source src="https://cdn.videy.co/4rJUHDOz1.mp4" type="video/mp4" />
+        Browser tidak mendukung video HTML5.
+      </video>
+
+      <!-- AD SLOT: TOP (transparan) -->
+      <div class="ad-slot top" id="ad-slot-top" aria-hidden="false" aria-label="Iklan atas (mengambang)">
+        <div class="ad-inner" id="ad-top-inner" role="region" aria-label="Kontainer iklan atas">
+<script type="text/javascript">
+	atOptions = {
+		'key' : 'cf902c3f231d99e4ed78299963127fdb',
+		'format' : 'iframe',
+		'height' : 50,
+		'width' : 320,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//buffetaccommodating.com/cf902c3f231d99e4ed78299963127fdb/invoke.js"></script>
+        </div>
+      </div>
+
+      <!-- AD SLOT: BOTTOM (mengisi lebar .player, transparan) -->
+      <div class="ad-slot bottom" id="ad-slot-bottom" aria-hidden="false" aria-label="Iklan bawah (mengambang)">
+        <div class="ad-inner" id="ad-bottom-inner" role="region" aria-label="Kontainer iklan bawah">
+<script async="async" data-cfasync="false" src="//buffetaccommodating.com/34414abc94f86276d97e28409968a856/invoke.js"></script>
+<div id="container-34414abc94f86276d97e28409968a856"></div>
+
+        </div>
+      </div>
+
+      <!-- CONTROLS (tetap di atas semua iklan) -->
+      <div class="controls" role="group" aria-label="Kontrol pemutar">
+        <div style="min-width:48px;">
+          <button id="playbtn" class="btn" type="button" aria-label="Putar/Jeda">►</button>
+        </div>
+
+        <div style="flex:1;">
+          <input id="progress" class="progress" type="range" min="0" max="100" step="0.1" value="0" aria-label="Progress video" />
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="color:var(--muted);font-size:0.9rem;"><span id="current">0:00</span> / <span id="duration">0:00</span></div>
+          <button id="mutebtn" class="btn" type="button" aria-label="Mute">🔊</button>
+          <input id="volume" type="range" min="0" max="1" step="0.05" value="1" style="width:110px" aria-label="Kontrol volume" />
+          <button id="fsbtn" class="btn" type="button" aria-label="Layar penuh">⤢</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+		<div style="text-align: center; margin: 30px 0;">
+  <a href="https://buffetaccommodating.com/y9rxdg88qd?key=6debfdd8219a42daa6f13a745034f39d" style="display: inline-flex; align-items: center; gap: 10px; background-color: #000000; color: white; font-size: 20px; font-weight: bold; padding: 16px 28px; border-radius: 8px; text-decoration: none; box-shadow: 0 0 15px rgba(255 255 255 / 80%); animation: blink 1.5s infinite;">▶︎ FULL HD VIDEO
+  </a>
+  <script>
+    /* ===========================
+       Player controls (minimal)
+       =========================== */
+    (function(){
+      const video = document.getElementById('video');
+      const playbtn = document.getElementById('playbtn');
+      const progress = document.getElementById('progress');
+      const currentEl = document.getElementById('current');
+      const durationEl = document.getElementById('duration');
+      const volume = document.getElementById('volume');
+      const mutebtn = document.getElementById('mutebtn');
+      const fsbtn = document.getElementById('fsbtn');
+
+      function fmt(t){ if (!isFinite(t)) return '0:00'; const m=Math.floor(t/60), s=Math.floor(t%60).toString().padStart(2,'0'); return m+':'+s; }
+      function setDuration(){ durationEl.textContent = fmt(video.duration); progress.max = isFinite(video.duration) ? video.duration : 0; }
+
+      video.addEventListener('loadedmetadata', setDuration);
+      video.addEventListener('timeupdate', ()=>{ progress.value = video.currentTime || 0; currentEl.textContent = fmt(video.currentTime || 0); });
+
+      playbtn.addEventListener('click', ()=>{
+        if (video.paused) {
+          video.play().catch(()=>{ video.muted = true; video.play().catch(()=>{}); });
+          playbtn.textContent = '❚❚';
+        } else {
+          video.pause(); playbtn.textContent = '►';
+        }
+      });
+      video.addEventListener('click', ()=> playbtn.click());
+
+      progress.addEventListener('input', e => currentEl.textContent = fmt(parseFloat(e.target.value)||0));
+      progress.addEventListener('change', e => { video.currentTime = parseFloat(e.target.value)||0; });
+
+      volume.addEventListener('input', e => { video.volume = parseFloat(e.target.value); mutebtn.textContent = (video.volume === 0) ? '🔈' : '🔊'; });
+      mutebtn.addEventListener('click', ()=> { video.muted = !video.muted; mutebtn.textContent = video.muted ? '🔈' : '🔊'; });
+
+      fsbtn.addEventListener('click', async ()=>{
+        const container = video.closest('.player');
+        try {
+          if (!document.fullscreenElement) {
+            if (container.requestFullscreen) await container.requestFullscreen();
+            else if (container.webkitRequestFullscreen) await container.webkitRequestFullscreen();
+          } else {
+            if (document.exitFullscreen) await document.exitFullscreen();
+          }
+        } catch(e){}
+      });
+
+      // init ui
+      setDuration();
+      currentEl.textContent = '0:00';
+      playbtn.textContent = '►';
+    })();
+
+    // Full HD button behavior: buka sumber video di tab baru (atau download)
+    (function(){
+      const btn = document.getElementById('fullhdbtn');
+      const video = document.getElementById('video');
+      btn.addEventListener('click', () => {
+        const src = (video.currentSrc && video.currentSrc.length) ? video.currentSrc : (video.querySelector('source')?.src || '');
+        if (!src) {
+          alert('Sumber video tidak ditemukan.');
+          return;
+        }
+        window.open(src, '_blank', 'noopener');
+      });
+    })();
+  </script>
+</body>
+</html>
